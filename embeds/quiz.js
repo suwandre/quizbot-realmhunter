@@ -1,12 +1,85 @@
+require('dotenv').config();
 const { EmbedBuilder } = require('discord.js');
+// const Moralis = require('moralis-v1/node');
 
-const quizEmbed = new EmbedBuilder()
+// const serverUrl = process.env.MORALIS_SERVERURL;
+// const appId = process.env.MORALIS_APPID;
+// const masterKey = process.env.MORALIS_MASTERKEY;
+
+// const parseJSON = (data) => JSON.parse(JSON.stringify(data));
+
+/**
+ *
+ * @param {String} description
+ * @param {Number} startTime
+ * @returns
+ */
+const initialStart = (description, startTime) => {
+    return new EmbedBuilder()
+        .setColor(0x0099FF)
+        .setTitle('Quiz is starting soon.')
+        .setDescription(`This quiz will start in ${startTime} seconds.`)
+        .addFields(
+            { name: 'Quiz description', value: description },
+        )
+        .setTimestamp();
+};
+
+const questionLoading = new EmbedBuilder()
+        .setColor(0x0099FF)
+        .setTitle('Loading question.')
+        .setDescription('Once all reaction emojis are available, the question will be loaded.');
+
+const leaderboard = (leaderboardValue) => {
+    return new EmbedBuilder()
+        .setColor(0x0099FF)
+        .setTitle('Current leaderboard')
+        .addFields(
+            { name: '‎', value: leaderboardValue },
+        );
+};
+
+const endQuestion = (question, correctAnswers) => {
+    return new EmbedBuilder()
+        .setColor(0x0099FF)
+        .setAuthor({ name: 'Time\'s up!' })
+        .setTitle(`The question was: ${question}`)
+        .setFooter({ text: 'Did you get it right?' })
+        .addFields(
+            { name: '‎', value: `The correct answer(s) is/are: \n ${correctAnswers}` },
+        );
+};
+
+const nextQuestion = new EmbedBuilder()
     .setColor(0x0099FF)
-    .setTitle('Realm Hunter Quiz')
-    .setDescription('This is a Realm Hunter Quiz')
+    .setAuthor({ name: 'Get ready for the next question.'})
     .addFields(
-        { name: 'Yow, I\'m a title', value: 'Yes' },
-    )
-    .setTimestamp();
+        { name: '‎', value: 'The next question will load in 5 seconds.' },
+    );
 
-module.exports = quizEmbed;
+const quiz = (
+    questionId,
+    question,
+    minimumPoints,
+    maximumPoints,
+    duration,
+    answersAsValue,
+) => {
+    return new EmbedBuilder()
+        .setColor(0x0099FF)
+        .setAuthor({ name: `Question ${questionId}` })
+        .setTitle(question)
+        .setFooter({ text: `Duration: ${duration}s | A correct answer gives you ${minimumPoints} - ${maximumPoints} points.` })
+        .addFields(
+            { name: '‎', value: answersAsValue },
+        );
+};
+
+module.exports = {
+    initialStart,
+    leaderboard,
+    quiz,
+    questionLoading,
+    endQuestion,
+    nextQuestion,
+};

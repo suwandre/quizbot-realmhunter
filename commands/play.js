@@ -5,6 +5,6 @@ module.exports = {
         .setName('play')
         .setDescription('Starts the quiz!'),
     async execute(interaction) {
-        await interaction.reply('Quiz started!');
+        await interaction.reply('Quiz starts.');
     },
 };
