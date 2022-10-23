@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, Collection, Collector } = require('discord.js');
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -11,7 +11,6 @@ const Moralis = require('moralis-v1/node');
 const { initialStart, quiz, questionLoading, leaderboard, endQuestion, nextQuestion } = require('./embeds/quiz');
 const { getQuizData } = require('./api/getQuizData');
 const { delay } = require('./utils/delay');
-const compare = require('./utils/compare');
 const serverUrl = process.env.MORALIS_SERVERURL;
 const appId = process.env.MORALIS_APPID;
 const masterKey = process.env.MORALIS_MASTERKEY;
@@ -182,7 +181,7 @@ client.on('messageCreate', async (message) => {
                                 console.log(participant.totalPoints);
                             });
                         }
-                        console.log(`${user.tag} guessed correctly within ${timeUsed} seconds!.`);
+                        console.log(`${user.tag} guessed ${reaction.emoji.name} correctly within ${timeUsed} seconds!.`);
                     });
 
                     // if the user removes their correct answer reaction, this logic will run.
@@ -208,10 +207,8 @@ client.on('messageCreate', async (message) => {
                                 choicesCorrect: 0,
                                 totalPoints: 0,
                             };
-
                             participants.push(participant);
                         }
-
                         console.log(`${user.tag} removed their reaction.`);
                     });
 
@@ -273,10 +270,211 @@ client.on('messageCreate', async (message) => {
                     });
                 }
 
-                // if there are more than 1 correct answer, we will use this logic.
-                if (correctAnswers > 1) {
-                    // having more than 1 correct answer requires more detailed calculation and data manipulation which requires multiple steps.
-                    
+                // if there is more than 1 correct answer, we will use this logic.
+                if (correctAnswers.length > 1) {
+                    // we create two filters, one for the correct answer and one for the wrong answer emojis.
+                    const correctFilter = (reaction, user) => correctAnswersAsEmojis.includes(reaction.emoji.name) && !user.bot;
+                    const wrongFilter = (reaction, user) => !correctAnswersAsEmojis.includes(reaction.emoji.name) && !user.bot;
+
+                    // we now create two reaction collectors, one for the correct answer and one for the wrong answer emojis.
+                    const correctCollector = sendQuiz.createReactionCollector({ filter: correctFilter, time: duration * 1000, dispose: true });
+                    const wrongCollector = sendQuiz.createReactionCollector({ filter: wrongFilter, time: duration * 1000, dispose: true });
+
+                    // we get both the time used and points earned by the participant for this question.
+                    let timeUsed;
+                    // since there are multiple correct answers, we need to keep track of the points earned for each correct answer.
+                    // this is why instead of a single value, we will create an object of points so we can track properly.
+                    const points = {};
+
+                    // if the user reacts with a correct answer, this logic will run.
+                    correctCollector.on('collect', (reaction, user) => {
+                        // getting the timestamp of when the user reacted.
+                        const reacted = Date.now();
+                        // time taken for them to react (in seconds)
+                        timeUsed = (reacted - actualStartTime) / 1000;
+
+                        // calculating the points earned by the user (linear decrease in points based on time used)
+                        // if the user somehow still manages to react after the duration, they will get 0 points.
+                        points[reaction.emoji.name] = timeUsed <= duration ? maximumPoints - ((maximumPoints - minimumPoints) / duration * timeUsed) : 0;
+
+                        // we want to check if the participant exists in `participants` (since they can remove the reaction anytime and react again within `duration` seconds)
+                        // if the participant doesn't exist, then we will add the participant to the array.
+                        const participantFound = participants.find(participant => participant.userId === user.id);
+
+                        // if the participant is NOT found, this logic will run.
+                        if (!participantFound) {
+                            // this will be created from whichever question the participant answers correctly first (not necessarily the first question)
+                            // although this will run from the first question.
+                            // we will fill the `participant` object with the following properties and values:
+                            const participant = {
+                                usertag: user.tag,
+                                userId: user.id,
+                                // some questions will have more than 1 correct 'choice', so instead of `questionsCorrect` we will use `choicesCorrect`.
+                                choicesCorrect: 1,
+                                choicesWrong: 0,
+                                totalPoints: points[reaction.emoji.name],
+                            };
+                            // we push the `participant` object to the `participants` array.
+                            participants.push(participant);
+                        } else {
+                            // if the participant already exists, we will update their data.
+                            participants.forEach((participant) => {
+                                if (participant.userId === user.id) {
+                                    participant.choicesCorrect += 1;
+                                    participant.totalPoints += points[reaction.emoji.name];
+                                }
+                                console.log(participant.totalPoints);
+                            });
+                        }
+                        console.log(`${user.tag} guessed ${reaction.emoji.name} correctly within ${timeUsed} seconds!.`);
+                    });
+
+                    // if the user removes their correct answer reaction, this logic will run.
+                    correctCollector.on('remove', (reaction, user) => {
+                        // we want to first check if the participant exists.
+                        const participantFound = participants.find(participant => participant.userId === user.id);
+
+                        // if the participant exists, we update their `points` and `choicesCorrect`.
+                        if (participantFound) {
+                            participants.forEach((participant) => {
+                                if (participant.userId === user.id) {
+                                    participant.choicesCorrect -= 1;
+                                    participant.totalPoints -= points[reaction.emoji.name];
+                                }
+                                console.log(participant.totalPoints);
+                            });
+                        // this technically should never run since in order for them to have a participant object, they need to react to this emoji.
+                        // but just in case, we will create a participant object with 0 points and 0 choices correct.
+                        } else {
+                            const participant = {
+                                usertag: user.tag,
+                                userId: user.id,
+                                choicesCorrect: 0,
+                                totalPoints: 0,
+                            };
+                            participants.push(participant);
+                        }
+                        console.log(`${user.tag} removed their reaction ${reaction.emoji.name}.`);
+                    });
+
+                    // for the wrong answer reactions, we will first check the amount of correct answers available for the question.
+                    // if the correct answers are less than or half the amount of the available answers
+                    if (correctAnswers.length <= (answers.length / 2)) {
+                        wrongCollector.on('collect', (reaction, user) => {
+                            console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
+                            // we want to check if the participant exists in `participants`.
+                            const participantFound = participants.find(participant => participant.userId === user.id);
+
+                            // if the participant is not found, we will create a participant object and give them -1000 points.
+                            if (!participantFound) {
+                                const participant = {
+                                    usertag: user.tag,
+                                    userId: user.id,
+                                    choicesCorrect: 0,
+                                    choicesWrong: 1,
+                                    totalPoints: -1000,
+                                };
+                                participants.push(participant);
+                            // if the participant is found, we will update their data and reduce their points by 1000.
+                            } else {
+                                participants.forEach((participant) => {
+                                    if (participant.userId === user.id) {
+                                        participant.choicesWrong += 1;
+                                        participant.totalPoints -= 1000;
+                                    }
+                                    console.log(participant.totalPoints);
+                                });
+                            }
+                        });
+
+                        // if the user removes their wrong answer reaction, this logic will run.
+                        wrongCollector.on('remove', (reaction, user) => {
+                            console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
+                            // we want to check if the participant exists in `participants`.
+                            const participantFound = participants.find(participant => participant.userId === user.id);
+
+                            // if the participant is found, we will update their data and regive them their 1000 points back.
+                            if (participantFound) {
+                                participants.forEach((participant) => {
+                                    if (participant.userId === user.id) {
+                                        participant.choicesWrong -= 1;
+                                        participant.totalPoints += 1000;
+                                    }
+                                    console.log(participant.totalPoints);
+                                });
+                            // if somehow the participant is not found, we will only create a participant object for them and give 0 points.
+                            // this is because they didn't 'lose' any points to begin with and they removed their reaction anyway.
+                            } else {
+                                const participant = {
+                                    usertag: user.tag,
+                                    userId: user.id,
+                                    choicesCorrect: 0,
+                                    choicesWrong: 0,
+                                    totalPoints: 0,
+                                };
+                                participants.push(participant);
+                            }
+                        });
+                    // if the correct answers are more than half the amount of the available answers
+                    } else {
+                        // only difference with the code above is that we will give them -2000 points instead of -1000.
+                        wrongCollector.on('collect', (reaction, user) => {
+                            console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
+                            // we want to check if the participant exists in `participants`.
+                            const participantFound = participants.find(participant => participant.userId === user.id);
+
+                            // if the participant is not found, we will create a participant object and give them -2000 points.
+                            if (!participantFound) {
+                                const participant = {
+                                    usertag: user.tag,
+                                    userId: user.id,
+                                    choicesCorrect: 0,
+                                    choicesWrong: 1,
+                                    totalPoints: -2000,
+                                };
+                                participants.push(participant);
+                            // if the participant is found, we will update their data and reduce their points by 2000.
+                            } else {
+                                participants.forEach((participant) => {
+                                    if (participant.userId === user.id) {
+                                        participant.choicesWrong += 1;
+                                        participant.totalPoints -= 2000;
+                                    }
+                                    console.log(participant.totalPoints);
+                                });
+                            }
+                        });
+
+                        // if the user removes their wrong answer reaction, this logic will run.
+                        wrongCollector.on('remove', (reaction, user) => {
+                            // only difference with the code above is that we will give them +2000 points instead of +1000.
+                            console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
+                            // we want to check if the participant exists in `participants`.
+                            const participantFound = participants.find(participant => participant.userId === user.id);
+
+                            // if the participant is found, we will update their data and regive them their 1000 points back.
+                            if (participantFound) {
+                                participants.forEach((participant) => {
+                                    if (participant.userId === user.id) {
+                                        participant.choicesWrong -= 1;
+                                        participant.totalPoints += 2000;
+                                    }
+                                    console.log(participant.totalPoints);
+                                });
+                            // if somehow the participant is not found, we will only create a participant object for them and give 0 points.
+                            // this is because they didn't 'lose' any points to begin with and they removed their reaction anyway.
+                            } else {
+                                const participant = {
+                                    usertag: user.tag,
+                                    userId: user.id,
+                                    choicesCorrect: 0,
+                                    choicesWrong: 0,
+                                    totalPoints: 0,
+                                };
+                                participants.push(participant);
+                            }
+                        });
+                    }
                 }
 
                 // we wait for the duration of the question to end before moving on.

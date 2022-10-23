@@ -1,12 +1,5 @@
 require('dotenv').config();
 const { EmbedBuilder } = require('discord.js');
-// const Moralis = require('moralis-v1/node');
-
-// const serverUrl = process.env.MORALIS_SERVERURL;
-// const appId = process.env.MORALIS_APPID;
-// const masterKey = process.env.MORALIS_MASTERKEY;
-
-// const parseJSON = (data) => JSON.parse(JSON.stringify(data));
 
 /**
  *
@@ -28,7 +21,7 @@ const initialStart = (description, startTime) => {
 const questionLoading = new EmbedBuilder()
         .setColor(0x0099FF)
         .setTitle('Loading question.')
-        .setDescription('Once all reaction emojis are available, the question will be loaded.');
+        .setDescription('Once all reaction emojis are available, the question will be loaded. \n Please do not try to react yet or your points won\'t be calculated properly.');
 
 const leaderboard = (leaderboardValue) => {
     return new EmbedBuilder()
@@ -52,7 +45,7 @@ const endQuestion = (question, correctAnswers) => {
 
 const nextQuestion = new EmbedBuilder()
     .setColor(0x0099FF)
-    .setAuthor({ name: 'Get ready for the next question.'})
+    .setAuthor({ name: 'Get ready for the next question.' })
     .addFields(
         { name: '‎', value: 'The next question will load in 5 seconds.' },
     );
