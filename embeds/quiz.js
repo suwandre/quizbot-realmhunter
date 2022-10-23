@@ -69,7 +69,7 @@ const quiz = (
         .setColor(0x0099FF)
         .setAuthor({ name: `Question ${questionId}` })
         .setTitle(question)
-        .setFooter({ text: `Duration: ${duration}s | A correct answer gives you ${minimumPoints} - ${maximumPoints} points.` })
+        .setFooter({ text: `Duration: ${duration}s | Each correct answer gives you ${minimumPoints} - ${maximumPoints} points.` })
         .addFields(
             { name: '‎', value: answersAsValue },
         );
