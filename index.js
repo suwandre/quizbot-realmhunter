@@ -497,20 +497,26 @@ client.on('messageCreate', async (message) => {
                 sortByPoints.forEach((participant) => {
                     let ranking = 1;
                     for (ranking; ranking <= sortByPoints.length; ranking++) {
-                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect} choices correct with ${participant[1].totalPoints} points.\n`;
+                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect} choice(s) correct with ${participant[1].totalPoints} points.\n`;
                     }
                 });
 
-                const showLeaderboard = await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue) ] });
+                const showLeaderboard = await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, false) ] });
 
                 // we will show the leaderboard for 5 seconds before deleting it.
                 await delay(5000);
                 await showLeaderboard.delete();
 
-                // we will show the `next question loading` embed for 5 seconds before deleting it.
-                const startNext = await message.channel.send({ embeds: [ nextQuestion ] });
-                await delay(5000);
-                await startNext.delete();
+                // as long as it's not the last question, we will run this logic.
+                if (currentQuestion !== quizDatas.length) {
+                    // we will show the `next question loading` embed for 5 seconds before deleting it.
+                    const startNext = await message.channel.send({ embeds: [ nextQuestion ] });
+                    await delay(5000);
+                    await startNext.delete();
+                } else {
+                    // if it's the last question, we show the leaderboard embed as the final leaderboard embed.
+                    await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, true) ] });
+                }
             }
         }
     } catch (err) {

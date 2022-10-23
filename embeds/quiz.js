@@ -23,10 +23,10 @@ const questionLoading = new EmbedBuilder()
         .setTitle('Loading question.')
         .setDescription('Once all reaction emojis are available, the question will be loaded. \n Please do not try to react yet or your points won\'t be calculated properly.');
 
-const leaderboard = (leaderboardValue) => {
+const leaderboard = (leaderboardValue, isFinal) => {
     return new EmbedBuilder()
         .setColor(0x0099FF)
-        .setTitle('Current leaderboard')
+        .setTitle(`${isFinal ? 'Final' : 'Current'} leaderboard`)
         .addFields(
             { name: '‎', value: leaderboardValue },
         );
