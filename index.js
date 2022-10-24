@@ -52,6 +52,12 @@ client.on('messageCreate', async (message) => {
                 return;
             }
 
+            // we get an array of quiz data objects from `getQuizData`.
+            const quizDatas = await getQuizData();
+
+            // we get the amount of total questions for the quiz.
+            const totalQuestions = quizDatas.length;
+
             // the description of the quiz
             const quizDescription = `This quiz entails general knowledge questions about Realm Hunter. 
                                     Don't worry about not knowing any of the answers, since it's meant to be built like that.
@@ -62,10 +68,7 @@ client.on('messageCreate', async (message) => {
             const startsIn = 10;
 
             // announcing that the quiz is commencing
-            const quizCommencing = await message.channel.send({ embeds: [initialStart(quizDescription, startsIn)] });
-
-            // we get an array of quiz data objects from `getQuizData`.
-            const quizDatas = await getQuizData();
+            const quizCommencing = await message.channel.send({ embeds: [initialStart(quizDescription, startsIn, totalQuestions)] });
 
             // we wait 10 seconds before commencing the quiz (and with it deleting the `quizCommencing` message)
             await delay(startsIn * 1000);
@@ -76,6 +79,9 @@ client.on('messageCreate', async (message) => {
 
             // we start with question 1.
             let currentQuestion = 1;
+
+            // we get the amount of correct answers for each question to see how many correct answers a participant gets after each round.
+            let totalCorrectAnswers = 0;
 
             // each question can have up to 9 answers. each of them will represent an emoji to react to.
             const answersAsEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
@@ -115,6 +121,8 @@ client.on('messageCreate', async (message) => {
                 const correctAnswersAsEmojis = [];
                 // we also want to get the correct answers as a string, just like `answersAsValue` above.
                 let correctAnswersAsValue = '';
+                // we add `totalCorrectAnswers` by the amount of correct answers there are for this question.
+                totalCorrectAnswers += correctAnswers.length;
 
                 for (let i = 0; i < correctAnswers.length; i++) {
                     // we want to check for the index of the correct answer in the `answers` array.
@@ -497,7 +505,7 @@ client.on('messageCreate', async (message) => {
                 sortByPoints.forEach((participant) => {
                     let ranking = 1;
                     for (ranking; ranking <= sortByPoints.length; ranking++) {
-                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect} choice(s) correct with ${participant[1].totalPoints} points.\n`;
+                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalCorrectAnswers} choice(s) correct and ${participant[1].choicesWrong} choice(s) wrong with ${participant[1].totalPoints} points.\n`;
                     }
                 });
 

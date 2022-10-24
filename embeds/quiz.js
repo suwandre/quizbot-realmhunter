@@ -7,13 +7,14 @@ const { EmbedBuilder } = require('discord.js');
  * @param {Number} startTime
  * @returns
  */
-const initialStart = (description, startTime) => {
+const initialStart = (description, startTime, totalQuestions) => {
     return new EmbedBuilder()
         .setColor(0x0099FF)
         .setTitle('Quiz is starting soon.')
         .setDescription(`This quiz will start in ${startTime} seconds.`)
         .addFields(
             { name: 'Quiz description', value: description },
+            { name: 'Total questions', value: totalQuestions },
         )
         .setTimestamp();
 };
