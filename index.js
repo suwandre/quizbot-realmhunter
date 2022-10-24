@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const Moralis = require('moralis-v1/node');
 
-const { initialStart, quiz, questionLoading, leaderboard, endQuestion, nextQuestion } = require('./embeds/quiz');
+const { initialStart, quiz, questionLoading, leaderboard, endQuestion, nextQuestion, rules, quizEnded } = require('./embeds/quiz');
 const { getQuizData } = require('./api/getQuizData');
 const { delay } = require('./utils/delay');
 const serverUrl = process.env.MORALIS_SERVERURL;
@@ -55,9 +55,6 @@ client.on('messageCreate', async (message) => {
             // we get an array of quiz data objects from `getQuizData`.
             const quizDatas = await getQuizData();
 
-            // we get the amount of total questions for the quiz.
-            const totalQuestions = quizDatas.length;
-
             // the description of the quiz
             const quizDescription = `This quiz entails general knowledge questions about Realm Hunter. 
                                     Don't worry about not knowing any of the answers, since it's meant to be built like that.
@@ -68,7 +65,7 @@ client.on('messageCreate', async (message) => {
             const startsIn = 10;
 
             // announcing that the quiz is commencing
-            const quizCommencing = await message.channel.send({ embeds: [initialStart(quizDescription, startsIn, totalQuestions)] });
+            const quizCommencing = await message.channel.send({ embeds: [initialStart(quizDescription, startsIn)] });
 
             // we wait 10 seconds before commencing the quiz (and with it deleting the `quizCommencing` message)
             await delay(startsIn * 1000);
@@ -80,14 +77,25 @@ client.on('messageCreate', async (message) => {
             // we start with question 1.
             let currentQuestion = 1;
 
-            // we get the amount of correct answers for each question to see how many correct answers a participant gets after each round.
+            // we get the amount of correct answers for each question to see how many correct answers are in the quiz after it ends.
             let totalCorrectAnswers = 0;
+
+            // we also want to get the amount of points obtainable in this quiz in total after it ends.
+            let totalPointsObtainable = 0;
 
             // each question can have up to 9 answers. each of them will represent an emoji to react to.
             const answersAsEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
 
             // delete the `quizCommencing` message after the delay finishes.
             await quizCommencing.delete();
+
+            // before commencing the quiz, we send the rules of the quiz for 30 seconds.
+            const showRules = await message.channel.send({ embeds: [rules] });
+            await delay(30000);
+            await showRules.delete();
+
+            // we want to show the leaderboard permanently in the channel, so we will initialize it here and edit it after the end of each for loop.
+            let showLeaderboard;
 
             // we loop through all the quiz data objects.
             // this is where most of the quiz logic will begin.
@@ -123,6 +131,8 @@ client.on('messageCreate', async (message) => {
                 let correctAnswersAsValue = '';
                 // we add `totalCorrectAnswers` by the amount of correct answers there are for this question.
                 totalCorrectAnswers += correctAnswers.length;
+                // we add `totalPointsObtainable` by the maximum points for each correect answer for this question.
+                totalPointsObtainable += (maximumPoints * correctAnswers.length);
 
                 for (let i = 0; i < correctAnswers.length; i++) {
                     // we want to check for the index of the correct answer in the `answers` array.
@@ -504,16 +514,27 @@ client.on('messageCreate', async (message) => {
                 // we will now query through each participant in the newly created, sorted array and return the leaderboard as a string.
                 sortByPoints.forEach((participant) => {
                     let ranking = 1;
+                    const totalChoices = participant[1].choicesCorrect + participant[1].choicesWrong;
                     for (ranking; ranking <= sortByPoints.length; ranking++) {
-                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalCorrectAnswers} choice(s) correct and ${participant[1].choicesWrong} choice(s) wrong with ${participant[1].totalPoints} points.\n`;
+                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints} points.\n`;
                     }
                 });
 
-                const showLeaderboard = await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, false) ] });
+                // we want to start showing the leaderboard from the first question and edit it with the updated data after each question.
+                if (currentQuestion === 1) {
+                    showLeaderboard = await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, false) ] });
+                } else if (currentQuestion < quizDatas.length) {
+                    await showLeaderboard.edit({ embeds: [ leaderboard(leaderboardAsValue, false) ] });
+                // if it's the last question, we delete this leaderboard and show the `final leaderboard` as the logic shows down below.
+                } else {
+                    await showLeaderboard.delete();
+                }
 
-                // we will show the leaderboard for 5 seconds before deleting it.
-                await delay(5000);
-                await showLeaderboard.delete();
+                // const showLeaderboard = await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, false) ] });
+
+                // // we will show the leaderboard for 5 seconds before deleting it.
+                // await delay(5000);
+                // await showLeaderboard.delete();
 
                 // as long as it's not the last question, we will run this logic.
                 if (currentQuestion !== quizDatas.length) {
@@ -521,8 +542,11 @@ client.on('messageCreate', async (message) => {
                     const startNext = await message.channel.send({ embeds: [ nextQuestion ] });
                     await delay(5000);
                     await startNext.delete();
+                    console.log(totalCorrectAnswers);
+                    console.log(totalPointsObtainable);
                 } else {
-                    // if it's the last question, we show the leaderboard embed as the final leaderboard embed.
+                    // if it's the last question, we show the ending facts embed as well as the leaderboard embed as the final leaderboard embed.
+                    await message.channel.send({ embeds: [ quizEnded(quizDatas.length, totalCorrectAnswers, totalPointsObtainable)] });
                     await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, true) ] });
                 }
             }
