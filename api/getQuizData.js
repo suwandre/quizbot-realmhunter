@@ -1,6 +1,7 @@
 require('dotenv').config();
 const Moralis = require('moralis-v1/node');
 const { parseJSON } = require('../utils/jsonParser');
+const axios = require('axios').default;
 
 const serverUrl = process.env.MORALIS_SERVERURL;
 const appId = process.env.MORALIS_APPID;
@@ -51,6 +52,74 @@ const getQuizData = async () => {
     }
 };
 
+/**
+ * @dev alternative version of `getQuizData` where the data is obtained from Notion instead (FOR FIRST QUIZ TRIAL).
+ */
+const getFirstQuizNotion = async () => {
+    try {
+        const config = {
+            method: 'post',
+            url: `https://api.notion.com/v1/databases/${process.env.FIRST_TRIALQUIZ_ID}/query`,
+            headers: {
+                'Notion-Version': '2022-06-28',
+                'Authorization': process.env.NOTION_TOKEN,
+            },
+        };
+
+        const response = await axios(config).catch((err) => {
+            if (err.response) {
+                throw new Error(`Error: ${err.response.data.errorMessage}`);
+            } else if (err.request) {
+                throw new Error(`Error: ${err.request.data.errorMessage}`);
+            } else {
+                throw new Error(`Error: ${err}`);
+            }
+        });
+
+        // getting the results obtained from the axios response if no errors are thrown.
+        const results = response.data.results;
+
+        // an array of question data objects which include the question, answer(s), and other important data.
+        const questionDatas = [];
+
+        results.forEach((result) => {
+            // returns an array of answers
+            const answers = result.properties['Answers'].rich_text[0].plain_text.split('", ');
+
+            // returns an array of correct answers
+            const correctAnswers = result.properties['Correct Answers'].rich_text[0].plain_text.split('", ');
+
+            // removes the initial double quote from each answer
+            for (let i = 0; i < answers.length; i++) {
+                answers[i] = answers[i].replace(/[""]/g, '');
+            }
+
+            // removes the initial double quote from each correct answer
+            for (let j = 0; j < correctAnswers.length; j++) {
+                correctAnswers[j] = correctAnswers[j].replace(/[""]/g, '');
+            }
+
+            const questionData = {
+                questionId: result.properties['ID'].title[0].plain_text,
+                question: result.properties['Question'].rich_text[0].plain_text,
+                answers: answers,
+                correctAnswers: correctAnswers,
+                minimumPoints: result.properties['Minimum Points'].number,
+                maximumPoints: result.properties['Maximum Points'].number,
+                duration: result.properties['Duration'].number,
+            };
+            questionDatas.push(questionData);
+        });
+
+        // returns the question datas sorted by ascending order of questionId
+        return questionDatas.sort((a, b) => a.questionId - b.questionId);
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
+};
+
 module.exports = {
     getQuizData,
+    getFirstQuizNotion,
 };

@@ -103,5 +103,5 @@ module.exports = {
     endQuestion,
     nextQuestion,
     rules,
-    quizEnded
+    quizEnded,
 };
