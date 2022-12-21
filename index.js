@@ -9,7 +9,7 @@ const path = require('path');
 const Moralis = require('moralis-v1/node');
 
 const { initialStart, quiz, questionLoading, leaderboard, endQuestion, nextQuestion, rules, quizEnded } = require('./embeds/quiz');
-const { getQuizData } = require('./api/getQuizData');
+const { getFirstQuizNotion } = require('./api/getQuizData');
 const { delay } = require('./utils/delay');
 const serverUrl = process.env.MORALIS_SERVERURL;
 const appId = process.env.MORALIS_APPID;
@@ -53,13 +53,12 @@ client.on('messageCreate', async (message) => {
             }
 
             // we get an array of quiz data objects from `getQuizData`.
-            const quizDatas = await getQuizData();
+            const quizDatas = await getFirstQuizNotion();
 
             // the description of the quiz
-            const quizDescription = `This quiz entails general knowledge questions about Realm Hunter. 
+            const quizDescription = `This quiz will grant you general knowledge about Realm Hunter's basics. 
                                     Don't worry about not knowing any of the answers, since it's meant to be built like that.
-                                    The point is that you have fun and learn something new about us along the way!
-                                    P.S. Free alpha pass mints to the top 5 scorers of the quiz!`;
+                                    The point is to have interactive fun and gather a bit of knowledge about the game along the way!`;
 
             // the time in seconds before the quiz starts
             const startsIn = 10;
@@ -89,10 +88,10 @@ client.on('messageCreate', async (message) => {
             // delete the `quizCommencing` message after the delay finishes.
             await quizCommencing.delete();
 
-            // before commencing the quiz, we send the rules of the quiz for 30 seconds.
-            const showRules = await message.channel.send({ embeds: [rules] });
-            await delay(30000);
-            await showRules.delete();
+            // // before commencing the quiz, we send the rules of the quiz for 30 seconds.
+            // const showRules = await message.channel.send({ embeds: [rules] });
+            // await delay(30000);
+            // await showRules.delete();
 
             // we want to show the leaderboard permanently in the channel, so we will initialize it here and edit it after the end of each for loop.
             let showLeaderboard;
@@ -196,10 +195,10 @@ client.on('messageCreate', async (message) => {
                                     participant.choicesCorrect += 1;
                                     participant.totalPoints += points;
                                 }
-                                console.log(participant.totalPoints);
+                                // console.log(participant.totalPoints);
                             });
                         }
-                        console.log(`${user.tag} guessed ${reaction.emoji.name} correctly within ${timeUsed} seconds!.`);
+                        // console.log(`${user.tag} guessed ${reaction.emoji.name} correctly within ${timeUsed} seconds!.`);
                     });
 
                     // if the user removes their correct answer reaction, this logic will run.
@@ -214,7 +213,7 @@ client.on('messageCreate', async (message) => {
                                     participant.choicesCorrect -= 1;
                                     participant.totalPoints -= points;
                                 }
-                                console.log(participant.totalPoints);
+                                // console.log(participant.totalPoints);
                             });
                         // this technically should never run since in order for them to have a participant object, they need to react to this emoji.
                         // but just in case, we will create a participant object with 0 points and 0 choices correct.
@@ -227,12 +226,12 @@ client.on('messageCreate', async (message) => {
                             };
                             participants.push(participant);
                         }
-                        console.log(`${user.tag} removed their reaction.`);
+                        // console.log(`${user.tag} removed their reaction.`);
                     });
 
                     // this logic will run if the user reacts with any wrong answer.
                     wrongCollector.on('collect', (reaction, user) => {
-                        console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
+                        // console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
                         // we want to check if the participant exists in `participants`.
                         const participantFound = participants.find(participant => participant.userId === user.id);
 
@@ -253,14 +252,14 @@ client.on('messageCreate', async (message) => {
                                     participant.choicesWrong += 1;
                                     participant.totalPoints -= 1000;
                                 }
-                                console.log(participant.totalPoints);
+                                // console.log(participant.totalPoints);
                             });
                         }
                     });
 
                     // this logic will run if the user removes their wrong answer reaction.
                     wrongCollector.on('remove', (reaction, user) => {
-                        console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
+                        // console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
                         // we want to check if the participant exists in `participants`.
                         const participantFound = participants.find(participant => participant.userId === user.id);
 
@@ -271,7 +270,7 @@ client.on('messageCreate', async (message) => {
                                     participant.choicesWrong -= 1;
                                     participant.totalPoints += 1000;
                                 }
-                                console.log(participant.totalPoints);
+                                // console.log(participant.totalPoints);
                             });
                         // if somehow the participant is not found, we will only create a participant object for them and give 0 points.
                         // this is because they didn't 'lose' any points to begin with and they removed their reaction anyway.
@@ -341,10 +340,10 @@ client.on('messageCreate', async (message) => {
                                     participant.choicesCorrect += 1;
                                     participant.totalPoints += points[reaction.emoji.name];
                                 }
-                                console.log(participant.totalPoints);
+                                // console.log(participant.totalPoints);
                             });
                         }
-                        console.log(`${user.tag} guessed ${reaction.emoji.name} correctly within ${timeUsed} seconds!.`);
+                        // console.log(`${user.tag} guessed ${reaction.emoji.name} correctly within ${timeUsed} seconds!.`);
                     });
 
                     // if the user removes their correct answer reaction, this logic will run.
@@ -359,7 +358,7 @@ client.on('messageCreate', async (message) => {
                                     participant.choicesCorrect -= 1;
                                     participant.totalPoints -= points[reaction.emoji.name];
                                 }
-                                console.log(participant.totalPoints);
+                                // console.log(participant.totalPoints);
                             });
                         // this technically should never run since in order for them to have a participant object, they need to react to this emoji.
                         // but just in case, we will create a participant object with 0 points and 0 choices correct.
@@ -372,14 +371,14 @@ client.on('messageCreate', async (message) => {
                             };
                             participants.push(participant);
                         }
-                        console.log(`${user.tag} removed their reaction ${reaction.emoji.name}.`);
+                        // console.log(`${user.tag} removed their reaction ${reaction.emoji.name}.`);
                     });
 
                     // for the wrong answer reactions, we will first check the amount of correct answers available for the question.
                     // if the correct answers are less than or half the amount of the available answers
                     if (correctAnswers.length <= (answers.length / 2)) {
                         wrongCollector.on('collect', (reaction, user) => {
-                            console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
+                            // console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
                             // we want to check if the participant exists in `participants`.
                             const participantFound = participants.find(participant => participant.userId === user.id);
 
@@ -400,14 +399,14 @@ client.on('messageCreate', async (message) => {
                                         participant.choicesWrong += 1;
                                         participant.totalPoints -= 1000;
                                     }
-                                    console.log(participant.totalPoints);
+                                    // console.log(participant.totalPoints);
                                 });
                             }
                         });
 
                         // if the user removes their wrong answer reaction, this logic will run.
                         wrongCollector.on('remove', (reaction, user) => {
-                            console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
+                            // console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
                             // we want to check if the participant exists in `participants`.
                             const participantFound = participants.find(participant => participant.userId === user.id);
 
@@ -418,7 +417,7 @@ client.on('messageCreate', async (message) => {
                                         participant.choicesWrong -= 1;
                                         participant.totalPoints += 1000;
                                     }
-                                    console.log(participant.totalPoints);
+                                    // console.log(participant.totalPoints);
                                 });
                             // if somehow the participant is not found, we will only create a participant object for them and give 0 points.
                             // this is because they didn't 'lose' any points to begin with and they removed their reaction anyway.
@@ -437,7 +436,7 @@ client.on('messageCreate', async (message) => {
                     } else {
                         // only difference with the code above is that we will give them -2000 points instead of -1000.
                         wrongCollector.on('collect', (reaction, user) => {
-                            console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
+                            // console.log(`${user.tag} chose the wrong emoji, ${reaction.emoji.name}.`);
                             // we want to check if the participant exists in `participants`.
                             const participantFound = participants.find(participant => participant.userId === user.id);
 
@@ -458,7 +457,7 @@ client.on('messageCreate', async (message) => {
                                         participant.choicesWrong += 1;
                                         participant.totalPoints -= 2000;
                                     }
-                                    console.log(participant.totalPoints);
+                                    // console.log(participant.totalPoints);
                                 });
                             }
                         });
@@ -466,7 +465,7 @@ client.on('messageCreate', async (message) => {
                         // if the user removes their wrong answer reaction, this logic will run.
                         wrongCollector.on('remove', (reaction, user) => {
                             // only difference with the code above is that we will give them +2000 points instead of +1000.
-                            console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
+                            // console.log(`${user.tag} removed their wrong emoji choice, ${reaction.emoji.name}`);
                             // we want to check if the participant exists in `participants`.
                             const participantFound = participants.find(participant => participant.userId === user.id);
 
@@ -477,7 +476,7 @@ client.on('messageCreate', async (message) => {
                                         participant.choicesWrong -= 1;
                                         participant.totalPoints += 2000;
                                     }
-                                    console.log(participant.totalPoints);
+                                    // console.log(participant.totalPoints);
                                 });
                             // if somehow the participant is not found, we will only create a participant object for them and give 0 points.
                             // this is because they didn't 'lose' any points to begin with and they removed their reaction anyway.
@@ -511,14 +510,22 @@ client.on('messageCreate', async (message) => {
                 // we are going to sort the `participants` array by their `totalPoints` in descending order.
                 const sortByPoints = Object.entries(participants).sort((a, b) => b[1].totalPoints - a[1].totalPoints);
                 let leaderboardAsValue = '';
+                let ranking = 1;
+
                 // we will now query through each participant in the newly created, sorted array and return the leaderboard as a string.
                 sortByPoints.forEach((participant) => {
-                    let ranking = 1;
                     const totalChoices = participant[1].choicesCorrect + participant[1].choicesWrong;
-                    for (ranking; ranking <= sortByPoints.length; ranking++) {
-                        leaderboardAsValue = `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints} points.\n`;
-                    }
+                    leaderboardAsValue += `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints} points.\n`;
+                    ranking++;
+                    // for (ranking; ranking <= participant[1].length; ranking++) {
+                    //     leaderboardAsValue += `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints} points.\n`;
+                    // }
                 });
+
+                if (leaderboardAsValue === '') {
+                    // just to prevent an error, we will change an empty string to state that there are no participants yet.
+                    leaderboardAsValue = 'No active participants on the quiz yet.';
+                }
 
                 // we want to start showing the leaderboard from the first question and edit it with the updated data after each question.
                 if (currentQuestion === 1) {
@@ -530,20 +537,14 @@ client.on('messageCreate', async (message) => {
                     await showLeaderboard.delete();
                 }
 
-                // const showLeaderboard = await message.channel.send({ embeds: [ leaderboard(leaderboardAsValue, false) ] });
-
-                // // we will show the leaderboard for 5 seconds before deleting it.
-                // await delay(5000);
-                // await showLeaderboard.delete();
-
                 // as long as it's not the last question, we will run this logic.
                 if (currentQuestion !== quizDatas.length) {
                     // we will show the `next question loading` embed for 5 seconds before deleting it.
                     const startNext = await message.channel.send({ embeds: [ nextQuestion ] });
                     await delay(5000);
                     await startNext.delete();
-                    console.log(totalCorrectAnswers);
-                    console.log(totalPointsObtainable);
+                    // console.log(totalCorrectAnswers);
+                    // console.log(totalPointsObtainable);
                 } else {
                     // if it's the last question, we show the ending facts embed as well as the leaderboard embed as the final leaderboard embed.
                     await message.channel.send({ embeds: [ quizEnded(quizDatas.length, totalCorrectAnswers, totalPointsObtainable)] });

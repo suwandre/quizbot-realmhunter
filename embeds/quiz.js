@@ -23,20 +23,20 @@ const rules = new EmbedBuilder()
         .setColor(0x0099FF)
         .setTitle('Quiz rules')
         .addFields(
-            { name: 'Questions', value: 'There are 25 questions in this quiz.' },
+            { name: 'Questions', value: 'There are 10 questions in this quiz.' },
             { name: 'Points', value: 'The amount of points that you can obtain per question can be found in the footer of each question.' },
             { name: 'Points calculation', value: 'The amount of points you can get per question will be decreased linearly depending on the amount of time that you take to answer.' },
-            { name: 'Multiple choice', value: `Some questions only have one answer while others have multiple. \n
-            Please note that each wrong answer will penalize your points by either the question's maximum points or double that. \n
+            { name: 'Multiple choice', value: `All of the questions in this first quiz will only be single answer questions. \n
+            Please note that each wrong answer will penalize your points by the question's maximum points. \n
             So, don't even try to react to all the emojis thinking that you're clever ;)` },
             { name: 'Time', value: 'The amount of time you have for each question is also displayed in the footer of that question.' },
-            { name: 'Quiz duration', value: 'This quiz is expected to take maximum 30 minutes.' },
+            { name: 'Quiz duration', value: 'This quiz is expected to take maximum 10 minutes.' },
         );
 
 const questionLoading = new EmbedBuilder()
         .setColor(0x0099FF)
         .setTitle('Loading question.')
-        .setDescription('Once all reaction emojis are available, the question will be loaded. \n Please do not try to react yet or your points won\'t be calculated properly.');
+        .setDescription('Once all reaction emojis are available, the question will be loaded. \n Please do NOT try to react yet or your points won\'t be calculated properly.');
 
 const leaderboard = (leaderboardValue, isFinal) => {
     return new EmbedBuilder()
