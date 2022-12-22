@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const Moralis = require('moralis-v1/node');
 
-const { initialStart, quiz, questionLoading, leaderboard, endQuestion, nextQuestion, rules, quizEnded } = require('./embeds/quiz');
+const { initialStart, quiz, questionLoading, leaderboard, endQuestion, nextQuestion, quizEnded } = require('./embeds/quiz');
 const { getFirstQuizNotion } = require('./api/getQuizData');
 const { delay } = require('./utils/delay');
 const serverUrl = process.env.MORALIS_SERVERURL;
@@ -45,6 +45,41 @@ client.on('ready', () => {
 
 client.on('messageCreate', async (message) => {
     try {
+        // ROLL DICE 1-50 LOGIC
+        if (message.content.toLowerCase() === '?roll 1-50') {
+            // if the messager's role is not `The Creators`, then we send an error msg and return.
+            if (!message.member._roles.includes('956946650218237993')) {
+                await message.channel.send('You do not have permission to use this role.');
+                return;
+            }
+
+            await message.channel.send('Rolling the dice...');
+            // randomizes a number between 1 - 50
+            const result = Math.floor(Math.random() * 50) + 1;
+
+            // wait 5 seconds before showing the result
+            await delay(5000);
+            await message.channel.send(`The dice rolled: ${result}`);
+        }
+
+        // ROLL DICE 51-200 LOGIC
+        if (message.content.toLowerCase() === '?roll 51-200') {
+            // if the messager's role is not `The Creators`, then we send an error msg and return.
+            if (!message.member._roles.includes('956946650218237993')) {
+                await message.channel.send('You do not have permission to use this role.');
+                return;
+            }
+
+            await message.channel.send('Rolling the dice...');
+            // randomizes a number between 51 - 200
+            const result = Math.floor(Math.random() * 150) + 51;
+
+            // wait 5 seconds before showing the result
+            await delay(5000);
+            await message.channel.send(`The dice rolled: ${result}`);
+        }
+
+        // QUIZ LOGIC
         if (message.content.toLowerCase() === '?quiz') {
             // if the messager's role is not `The Creators`, then we send an error msg and return.
             if (!message.member._roles.includes('956946650218237993')) {
@@ -102,7 +137,7 @@ client.on('messageCreate', async (message) => {
                 // we send the `questionLoading` embed to load the question.
                 const sendQuiz = await message.channel.send({ embeds: [ questionLoading ] });
                 // we get the quiz data for the current question.
-                const { questionId, question, answers, correctAnswers, minimumPoints, maximumPoints, duration } = quizDatas[currentQuestion - 1];
+                const { questionId, question, answers, correctAnswers, minimumPoints, maximumPoints, duration, image } = quizDatas[currentQuestion - 1];
 
                 // `answers` contains an array of answers. For each answer available, we assign it an emoji incrementally.
                 for (const answer of answers) {
@@ -117,7 +152,7 @@ client.on('messageCreate', async (message) => {
                 }
 
                 // once the emojis are in place, we send the quiz embed.
-                await sendQuiz.edit({ embeds: [ quiz(questionId, question, minimumPoints, maximumPoints, duration, answersAsValue) ] });
+                await sendQuiz.edit({ embeds: [ quiz(questionId, question, minimumPoints, maximumPoints, duration, answersAsValue, image) ] });
 
                 // since it takes time to send the emojis and edit the embed, we want to make the `duration` be more fair.
                 // this is where we start counting down the duration for this particular question.
@@ -508,7 +543,11 @@ client.on('messageCreate', async (message) => {
                 await showAnswer.delete();
 
                 // we are going to sort the `participants` array by their `totalPoints` in descending order.
-                const sortByPoints = Object.entries(participants).sort((a, b) => b[1].totalPoints - a[1].totalPoints);
+                const sortedParticipants = Object.entries(participants).sort((a, b) => b[1].totalPoints - a[1].totalPoints);
+
+                // slice so we take only the top 30 participants and not messy up the leaderboard.
+                const sortByPoints = sortedParticipants.slice(0, 30);
+
                 let leaderboardAsValue = '';
                 let ranking = 1;
 
@@ -517,9 +556,6 @@ client.on('messageCreate', async (message) => {
                     const totalChoices = participant[1].choicesCorrect + participant[1].choicesWrong;
                     leaderboardAsValue += `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints} points.\n`;
                     ranking++;
-                    // for (ranking; ranking <= participant[1].length; ranking++) {
-                    //     leaderboardAsValue += `#${ranking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints} points.\n`;
-                    // }
                 });
 
                 if (leaderboardAsValue === '') {

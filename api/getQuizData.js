@@ -11,46 +11,46 @@ const masterKey = process.env.MORALIS_MASTERKEY;
  *
  * @returns {Array} - an array of quiz data objects for each question.
  */
-const getQuizData = async () => {
-    try {
-        await Moralis.start({
-            serverUrl,
-            appId,
-            masterKey,
-        });
+// const getQuizData = async () => {
+//     try {
+//         await Moralis.start({
+//             serverUrl,
+//             appId,
+//             masterKey,
+//         });
 
-        const Quiz = new Moralis.Query('RealmHunterQuizBot');
-        const query = await Quiz.find({ useMasterKey: true });
+//         const Quiz = new Moralis.Query('RealmHunterQuizBot');
+//         const query = await Quiz.find({ useMasterKey: true });
 
-        if (!query) {
-            throw new Error('Cannot find results. Please check the QuizBot class again.');
-        }
+//         if (!query) {
+//             throw new Error('Cannot find results. Please check the QuizBot class again.');
+//         }
 
-        const result = parseJSON(query);
+//         const result = parseJSON(query);
 
-        // an array of question data objects which include the question, answer(s), and other important data.
-        const questionDatas = [];
+//         // an array of question data objects which include the question, answer(s), and other important data.
+//         const questionDatas = [];
 
-        // we loop through each `item` in `result` to create a `questionData` object and we push it to `questionDatas`.
-        result.forEach((questionItem) => {
-            const questionData = {
-                questionId: questionItem.questionId,
-                question: questionItem.question,
-                answers: questionItem.answers,
-                correctAnswers: questionItem.correctAnswers,
-                minimumPoints: questionItem.minimumPoints,
-                maximumPoints: questionItem.maximumPoints,
-                duration: questionItem.duration,
-            };
-            questionDatas.push(questionData);
-        });
+//         // we loop through each `item` in `result` to create a `questionData` object and we push it to `questionDatas`.
+//         result.forEach((questionItem) => {
+//             const questionData = {
+//                 questionId: questionItem.questionId,
+//                 question: questionItem.question,
+//                 answers: questionItem.answers,
+//                 correctAnswers: questionItem.correctAnswers,
+//                 minimumPoints: questionItem.minimumPoints,
+//                 maximumPoints: questionItem.maximumPoints,
+//                 duration: questionItem.duration,
+//             };
+//             questionDatas.push(questionData);
+//         });
 
-        return questionDatas;
-    } catch (err) {
-        console.error(err);
-        throw err;
-    }
-};
+//         return questionDatas;
+//     } catch (err) {
+//         console.error(err);
+//         throw err;
+//     }
+// };
 
 /**
  * @dev alternative version of `getQuizData` where the data is obtained from Notion instead (FOR FIRST QUIZ TRIAL).
@@ -83,6 +83,7 @@ const getFirstQuizNotion = async () => {
         const questionDatas = [];
 
         results.forEach((result) => {
+            // console.log(result.properties['Image'].files.length === 0);
             // returns an array of answers
             const answers = result.properties['Answers'].rich_text[0].plain_text.split('", ');
 
@@ -99,6 +100,9 @@ const getFirstQuizNotion = async () => {
                 correctAnswers[j] = correctAnswers[j].replace(/[""]/g, '');
             }
 
+            // if the question has an image, it will be added here.
+            const image = result.properties['Image'].files.length === 0 ? null : result.properties['Image'].files[0].file.url;
+
             const questionData = {
                 questionId: result.properties['ID'].title[0].plain_text,
                 question: result.properties['Question'].rich_text[0].plain_text,
@@ -107,6 +111,7 @@ const getFirstQuizNotion = async () => {
                 minimumPoints: result.properties['Minimum Points'].number,
                 maximumPoints: result.properties['Maximum Points'].number,
                 duration: result.properties['Duration'].number,
+                image: image,
             };
             questionDatas.push(questionData);
         });
@@ -120,6 +125,6 @@ const getFirstQuizNotion = async () => {
 };
 
 module.exports = {
-    getQuizData,
+    // getQuizData,
     getFirstQuizNotion,
 };

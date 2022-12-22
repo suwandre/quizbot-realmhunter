@@ -72,6 +72,7 @@ const quiz = (
     maximumPoints,
     duration,
     answersAsValue,
+    image,
 ) => {
     return new EmbedBuilder()
         .setColor(0x0099FF)
@@ -80,7 +81,8 @@ const quiz = (
         .setFooter({ text: `Duration: ${duration}s | Each correct answer gives you ${minimumPoints} - ${maximumPoints} points.` })
         .addFields(
             { name: '‎', value: answersAsValue },
-        );
+        )
+        .setImage(image);
 };
 
 const quizEnded = (totalQuestions, maxCorrectAnswers, maxPoints) => {
