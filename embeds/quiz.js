@@ -42,9 +42,10 @@ const leaderboard = (leaderboardValue, isFinal) => {
     return new EmbedBuilder()
         .setColor(0x0099FF)
         .setTitle(`${isFinal ? 'Final' : 'Current'} leaderboard`)
-        .addFields(
-            { name: '‎', value: leaderboardValue },
-        );
+        .setDescription(leaderboardValue);
+        // .addFields(
+        //     { name: '‎', value: leaderboardValue },
+        // );
 };
 
 const endQuestion = (question, correctAnswers) => {
@@ -53,9 +54,10 @@ const endQuestion = (question, correctAnswers) => {
         .setAuthor({ name: 'Time\'s up!' })
         .setTitle(`The question was: ${question}`)
         .setFooter({ text: 'Did you get it right?' })
-        .addFields(
-            { name: '‎', value: `The correct answer(s) is/are: \n ${correctAnswers}` },
-        );
+        .setDescription(`The correct answer(s) is/are: \n ${correctAnswers}`);
+        // .addFields(
+        //     { name: '‎', value: `The correct answer(s) is/are: \n ${correctAnswers}` },
+        // );
 };
 
 const nextQuestion = new EmbedBuilder()
@@ -79,9 +81,10 @@ const quiz = (
         .setAuthor({ name: `Question ${questionId}` })
         .setTitle(question)
         .setFooter({ text: `Duration: ${duration}s | Each correct answer gives you ${minimumPoints} - ${maximumPoints} points.` })
-        .addFields(
-            { name: '‎', value: answersAsValue },
-        )
+        .setDescription(answersAsValue)
+        // .addFields(
+        //     { name: '‎', value: answersAsValue },
+        // )
         .setImage(image);
 };
 

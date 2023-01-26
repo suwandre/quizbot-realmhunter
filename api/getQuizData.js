@@ -124,7 +124,147 @@ const getFirstQuizNotion = async () => {
     }
 };
 
+const getSecondQuizNotion = async () => {
+    try {
+        const config = {
+            method: 'post',
+            url: `https://api.notion.com/v1/databases/${process.env.SECOND_QUIZ_ID}/query`,
+            headers: {
+                'Notion-Version': '2022-06-28',
+                'Authorization': process.env.NOTION_TOKEN,
+            },
+        };
+
+        const response = await axios(config).catch((err) => {
+            if (err.response) {
+                throw new Error(`Error: ${err.response.data.errorMessage}`);
+            } else if (err.request) {
+                throw new Error(`Error: ${err.request.data.errorMessage}`);
+            } else {
+                throw new Error(`Error: ${err}`);
+            }
+        });
+
+        // getting the results obtained from the axios response if no errors are thrown.
+        const results = response.data.results;
+
+        // an array of question data objects which include the question, answer(s), and other important data.
+        const questionDatas = [];
+
+        results.forEach((result) => {
+            // console.log(result.properties['Image'].files.length === 0);
+            // returns an array of answers
+            const answers = result.properties['Answers'].rich_text[0].plain_text.split('", ');
+
+            // returns an array of correct answers
+            const correctAnswers = result.properties['Correct Answers'].rich_text[0].plain_text.split('", ');
+
+            // removes the initial double quote from each answer
+            for (let i = 0; i < answers.length; i++) {
+                answers[i] = answers[i].replace(/[""]/g, '');
+            }
+
+            // removes the initial double quote from each correct answer
+            for (let j = 0; j < correctAnswers.length; j++) {
+                correctAnswers[j] = correctAnswers[j].replace(/[""]/g, '');
+            }
+
+            // if the question has an image, it will be added here.
+            const image = result.properties['Image'].files.length === 0 ? null : result.properties['Image'].files[0].file.url;
+
+            const questionData = {
+                questionId: result.properties['ID'].title[0].plain_text,
+                question: result.properties['Question'].rich_text[0].plain_text,
+                answers: answers,
+                correctAnswers: correctAnswers,
+                minimumPoints: result.properties['Minimum Points'].number,
+                maximumPoints: result.properties['Maximum Points'].number,
+                duration: result.properties['Duration'].number,
+                image: image,
+            };
+            questionDatas.push(questionData);
+        });
+
+        // returns the question datas sorted by ascending order of questionId
+        return questionDatas.sort((a, b) => a.questionId - b.questionId);
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
+};
+
+const getThirdQuizNotion = async () => {
+    try {
+        const config = {
+            method: 'post',
+            url: `https://api.notion.com/v1/databases/${process.env.THIRD_QUIZ_ID}/query`,
+            headers: {
+                'Notion-Version': '2022-06-28',
+                'Authorization': process.env.NOTION_TOKEN,
+            },
+        };
+
+        const response = await axios(config).catch((err) => {
+            if (err.response) {
+                throw new Error(`Error: ${err.response.data.errorMessage}`);
+            } else if (err.request) {
+                throw new Error(`Error: ${err.request.data.errorMessage}`);
+            } else {
+                throw new Error(`Error: ${err}`);
+            }
+        });
+
+        // getting the results obtained from the axios response if no errors are thrown.
+        const results = response.data.results;
+
+        // an array of question data objects which include the question, answer(s), and other important data.
+        const questionDatas = [];
+
+        results.forEach((result) => {
+            // console.log(result.properties['Image'].files.length === 0);
+            // // returns an array of answers
+            // const answers = result.properties['Answers'].rich_text[0].plain_text.split('", ');
+
+            // returns an array of correct answers
+            const correctAnswers = result.properties['Correct Answers'].rich_text[0].plain_text.split('", ');
+
+            // // removes the initial double quote from each answer
+            // for (let i = 0; i < answers.length; i++) {
+            //     answers[i] = answers[i].replace(/[""]/g, '');
+            // }
+
+            // removes the initial double quote from each correct answer
+            for (let j = 0; j < correctAnswers.length; j++) {
+                correctAnswers[j] = correctAnswers[j].replace(/[""]/g, '');
+            }
+
+            // if the question has an image, it will be added here.
+            const image = result.properties['Image'].files.length === 0 ? null : result.properties['Image'].files[0].name;
+
+            const questionData = {
+                questionId: result.properties['ID'].title[0].plain_text,
+                question: result.properties['Question'].rich_text[0].plain_text,
+                // answers: answers,
+                correctAnswers: correctAnswers,
+                minimumPoints: result.properties['Minimum Points'].number,
+                maximumPoints: result.properties['Maximum Points'].number,
+                duration: result.properties['Duration'].number,
+                image: image,
+            };
+            questionDatas.push(questionData);
+        });
+
+        // returns the question datas sorted by ascending order of questionId
+        return questionDatas.sort((a, b) => a.questionId - b.questionId);
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
+};
+
 module.exports = {
     // getQuizData,
     getFirstQuizNotion,
+    getSecondQuizNotion,
+    getThirdQuizNotion,
 };
