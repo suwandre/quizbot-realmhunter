@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+require('events').EventEmitter.prototype._maxListeners = 100;
+
 const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType, ActionRow, DataResolver } = require('discord.js');
 const express = require('express');
 const app = express();
@@ -113,7 +115,7 @@ client.on('messageCreate', async (message) => {
             let currentQuestion = 1;
 
             // we get the amount of correct answers for each question to see how many correct answers are in the quiz after it ends.
-            let totalCorrectAnswers = 0;
+            const totalCorrectAnswers = 25;
 
             // we also want to get the amount of points obtainable in this quiz in total after it ends.
             let totalPointsObtainable = 0;
@@ -131,9 +133,11 @@ client.on('messageCreate', async (message) => {
                 const { questionId, question, correctAnswers, minimumPoints, maximumPoints, duration, image } = quizDatas[currentQuestion - 1];
 
                 // correct answers as a string
-                let correctAnswersAsValue = 'Any of: ';
+                let correctAnswersAsValue = 'Any of: \n';
+
+                totalPointsObtainable += maximumPoints;
                 for (let i = 0; i < correctAnswers.length; i++) {
-                    correctAnswersAsValue = correctAnswersAsValue + correctAnswers[i];
+                    correctAnswersAsValue = `${correctAnswersAsValue} + ${correctAnswers[i]} \n`;
                 }
 
                 // now, we send the question embed to the channel.
@@ -149,14 +153,17 @@ client.on('messageCreate', async (message) => {
                                 custom_id: `answer${questionId}`,
                             },
                         ],
-                    },
-                ]});
+                    }],
+                });
 
                 // timer starts now
                 const actualStartTime = Date.now();
 
                 // isCorrect will be 'true' if the user's answer is correct, otherwise it will be 'false'.
                 let isCorrect;
+
+                // array of participants who answered. if participant is found, they can't answer anymore.
+                const answered = [];
 
                 client.on('interactionCreate', async (interaction) => {
                     // we get the user info who interacted.
@@ -191,6 +198,9 @@ client.on('messageCreate', async (message) => {
 
                     // when the user submits the answer modal
                     if (interaction.type === InteractionType.ModalSubmit) {
+                        // check if they answered already.
+                        const participantAnswered = answered.find((participant) => participant === user);
+
                         // the user's answer time will be calculated.
                         timeUsed = (Date.now() - actualStartTime) / 1000;
 
@@ -215,21 +225,39 @@ client.on('messageCreate', async (message) => {
                                 // check if participant is found in the `participants` array
                                 const participantFound = participants.find(participant => participant.user === user);
 
-                                // if not, we add the participant
+                                // if not, we add the participant. no need to check if they answered since object isnt found yet.
                                 if (!participantFound) {
-                                    const participant = {
-                                        user: user,
-                                        correctAnswers: 1,
-                                        wrongAnswers: 0,
-                                        totalPoints: points,
-                                    };
+                                    let participant;
+                                    if (timeUsed > duration) {
+                                        participant = {
+                                            user: user,
+                                            correctAnswers: 0,
+                                            wrongAnswers: 0,
+                                            totalPoints: points,
+                                        };
+                                    } else {
+                                        /* eslint-disable no-lonely-if */
+                                        if (!participantAnswered) {
+                                            participant = {
+                                                user: user,
+                                                correctAnswers: 1,
+                                                wrongAnswers: 0,
+                                                totalPoints: points,
+                                            };
+                                        }
+                                    }
                                     participants.push(participant);
                                 // if participant exists, we update the participant
                                 } else {
                                     participants.forEach((participant) => {
                                         if (participant.user === user) {
-                                            participant.correctAnswers += 1;
-                                            participant.totalPoints += points;
+                                            // no need to write totalPoints += 0 because points will already be 0 from the calculation above
+                                            // if duration is exceeded.
+                                            if (timeUsed > duration) participant.correctAnswers += 0;
+                                            if (!participantAnswered) {
+                                                participant.correctAnswers += 1;
+                                                participant.totalPoints += points;
+                                            }
                                         }
                                     });
                                 }
@@ -240,23 +268,43 @@ client.on('messageCreate', async (message) => {
 
                                 // if not found, we create the participant and reduce 1000 points.
                                 if (!participantFound) {
-                                    const participant = {
-                                        user: user,
-                                        correctAnswers: 0,
-                                        wrongAnswers: 1,
-                                        totalPoints: -1000,
-                                    };
+                                    let participant;
+                                    if (timeUsed > duration) {
+                                        participant = {
+                                            user: user,
+                                            correctAnswers: 0,
+                                            wrongAnswers: 0,
+                                            totalPoints: 0,
+                                        };
+                                    } else {
+                                        if (!participantAnswered) {
+                                            participant = {
+                                                user: user,
+                                                correctAnswers: 0,
+                                                wrongAnswers: -1,
+                                                totalPoints: -1000,
+                                            };
+                                        }
+                                    }
                                     participants.push(participant);
                                 } else {
                                     participants.forEach((participant) => {
                                         if (participant.user === user) {
-                                            participant.wrongAnswers += 1;
-                                            participant.totalPoints -= 1000;
+                                            if (timeUsed > duration) {
+                                                participant.wrongAnswers += 0;
+                                                participant.totalPoints -= 0;
+                                            } else {
+                                                if (!participantAnswered) {
+                                                    participant.wrongAnswers += 1;
+                                                    participant.totalPoints -= 1000;
+                                                }
+                                            }
                                         }
                                     });
                                 }
                             }
                         }
+                        answered.push(user);
                     }
                 });
 
@@ -276,7 +324,7 @@ client.on('messageCreate', async (message) => {
 
                 // we are going to sort the participants array by the total points they have.
                 const sortedParticipants = Object.entries(participants).sort((a, b) => b[1].totalPoints - a[1].totalPoints);
-                
+
                 // slice so we only take top 20 to not mess up the leaderboard and overflow.
                 const sortByPoints = sortedParticipants.slice(0, 20);
 
@@ -320,8 +368,8 @@ client.on('messageCreate', async (message) => {
                     let finalLeaderboardAsValue = '';
                     let finalRanking = 1;
                     sortedParticipants.forEach((participant) => {
-                        const totalChoices = participant[1].choicesCorrect + participant[1].choicesWrong;
-                        finalLeaderboardAsValue += `#${finalRanking}. ${participant[1].usertag} - ${participant[1].choicesCorrect}/${totalChoices} choice(s) correct with ${participant[1].totalPoints.toFixed(2)} points.\n`;
+                        const totalAnswers = participant[1].correctAnswers + participant[1].wrongAnswers;
+                        finalLeaderboardAsValue += `#${finalRanking}. ${participant[1].user} - ${participant[1].correctAnswers}/${totalAnswers} choice(s) correct with ${participant[1].totalPoints.toFixed(2)} points.\n`;
                         finalRanking++;
                     });
                     console.log(finalLeaderboardAsValue);
@@ -875,71 +923,69 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-client.on('interactionCreate', async (interaction) => {
-    console.log('interaction!');
+// client.on('interactionCreate', async (interaction) => {
+//     if (interaction.isButton()) {
+//         // // check for every answer button's id
+//         // if (interaction.customId.startsWith('answer')) {
+//         //     const quizData = await getThirdQuizNotion();
 
-    if (interaction.isButton()) {
-        // // check for every answer button's id
-        // if (interaction.customId.startsWith('answer')) {
-        //     const quizData = await getThirdQuizNotion();
+//         //     for (let i = 1; i <= 25; i++) {
+//         //         // getting the current answer button's id
+//         //         if (interaction.customId === `answer${i}`) {
+//         //             // const answer = 
+//         //         }
+//         //     }
+//         // }
+//         // if (interaction.customId === 'answer') {
+//             // const modal = new ModalBuilder()
+//             //     .setCustomId('answerModal')
+//             //     .setTitle('Guess The Logo answer')
+//             //     .addComponents([
+//             //         new ActionRowBuilder().addComponents(
+//             //             new TextInputBuilder()
+//             //                 .setCustomId('answerInput')
+//             //                 .setLabel('Answer')
+//             //                 .setStyle(TextInputStyle.Short)
+//             //                 .setRequired(true),
+//             //         ),
+//             //     ]);
+//             // await interaction.showModal(modal);
+//         // }
 
-        //     for (let i = 1; i <= 25; i++) {
-        //         // getting the current answer button's id
-        //         if (interaction.customId === `answer${i}`) {
-        //             // const answer = 
-        //         }
-        //     }
-        // }
-        // if (interaction.customId === 'answer') {
-            // const modal = new ModalBuilder()
-            //     .setCustomId('answerModal')
-            //     .setTitle('Guess The Logo answer')
-            //     .addComponents([
-            //         new ActionRowBuilder().addComponents(
-            //             new TextInputBuilder()
-            //                 .setCustomId('answerInput')
-            //                 .setLabel('Answer')
-            //                 .setStyle(TextInputStyle.Short)
-            //                 .setRequired(true),
-            //         ),
-            //     ]);
-            // await interaction.showModal(modal);
-        // }
+//         if (interaction.customId === 'testButton') {
+//             const modal = new ModalBuilder()
+//                 .setCustomId('testModal')
+//                 .setTitle('Test Modal')
+//                 .addComponents([
+//                     new ActionRowBuilder().addComponents(
+//                         new TextInputBuilder()
+//                             .setCustomId('testTextInput')
+//                             .setLabel('Answer')
+//                             .setStyle(TextInputStyle.Short)
+//                             .setMinLength(5)
+//                             .setMaxLength(10)
+//                             .setPlaceholder('Enter your answer here')
+//                             .setRequired(true),
+//                     ),
+//                 ]);
+//             await interaction.showModal(modal);
+//         }
+//     }
 
-        if (interaction.customId === 'testButton') {
-            const modal = new ModalBuilder()
-                .setCustomId('testModal')
-                .setTitle('Test Modal')
-                .addComponents([
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder()
-                            .setCustomId('testTextInput')
-                            .setLabel('Answer')
-                            .setStyle(TextInputStyle.Short)
-                            .setMinLength(5)
-                            .setMaxLength(10)
-                            .setPlaceholder('Enter your answer here')
-                            .setRequired(true),
-                    ),
-                ]);
-            await interaction.showModal(modal);
-        }
-    }
+//     if (interaction.type === InteractionType.ModalSubmit) {
+//         if (interaction.customId === 'testModal') {
+//             const response = interaction.fields.getTextInputValue('testTextInput');
+//             console.log(response);
+//             await interaction.reply(`You answered: ${response}`);
+//         }
 
-    if (interaction.type === InteractionType.ModalSubmit) {
-        if (interaction.customId === 'testModal') {
-            const response = interaction.fields.getTextInputValue('testTextInput');
-            console.log(response);
-            await interaction.reply(`You answered: ${response}`);
-        }
-
-        if (interaction.customId === 'answerModal') {
-            const response = interaction.fields.getTextInputValue('answerInput');
-            console.log(response);
-            await interaction.reply(`You answered: ${response}`);
-        }
-    }
-});
+//         if (interaction.customId === 'answerModal') {
+//             const response = interaction.fields.getTextInputValue('answerInput');
+//             console.log(response);
+//             await interaction.reply(`You answered: ${response}`);
+//         }
+//     }
+// });
 
 // client.on('interactionCreate', async (interaction) => {
 //     if (!interaction.isCommand()) return;
